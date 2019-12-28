@@ -1,0 +1,329 @@
+@ Time : 2019/12/28
+@Author: JiaJia
+
+# 一. 鸭子类型 （动态语言调用实例方法时不检查类型，只要方法存在，参数正确，就可以调用）
+# 列表extend 函数调用iterbale可迭代的对象，不管是元组还是集合都可以调用，这里的元组和集合相当于列表的鸭子类型
+a = [1, 2]
+b = [3, 4]
+c = (5, 7)  # 元组
+d = {7, 8}  # 集合 是无序的
+
+# append, extend的区别
+# def extend(self, iterable): iterable: 可迭代的对象 可以用for
+a.append(b)
+print(a)  # 输出为[1, 2, [3, 4]]
+a.extend(b)  # 输出为 [1, 2, 3, 4]
+print(a)
+a.extend(c)  # 输出为 [1, 2, 5, 7]
+print(a)
+a.extend(d)  # 输出为 [1, 2, 8, 7]
+print(a)
+
+# 二 多态
+# animal
+
+class Cat(object):
+    def say(self):
+        print('i am a Cat')
+
+
+class Dog(object):
+    def say(self):
+        print('i am a Dog')
+
+class Duck(object):
+    def say(self):
+        print('i am a Duck')
+
+
+animal_list = [Cat, Dog, Duck]
+for animal in animal_list:
+    animal().say()
+
+
+# 三 抽象基类(abc模块) 两个特点：1.不能被实例化 2. 子类方法需要重写. 
+# 两个应用场景: 1. 判断某个对象的类型
+
+class Demo(object):
+    def __init__(self, names):
+        self.names = names
+
+    def __len__(self):
+        return len(self.names)
+
+    def test(self):
+        pass
+
+
+d = Demo(['jiajia', 'python'])
+print(len(d))  # 输出2
+len(d) # 没有任何输出
+print(hasattr(d, '__len__'))  # True
+print(hasattr(d, '__iter__'))  # False
+
+
+from collections.abc import Sized
+
+print(isinstance(1, int))  # isinstance 判断对象的类型
+print(hasattr(d, 'test'))
+print(isinstance(d, Sized))  # 没有len方法时输出False
+
+# 2.我们需要强制某个子类必须实现某些方法
+# web cache redis memcache
+
+import abc
+
+
+class CacheBase(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def get(self, key):
+        # raise ValueError
+        self.key = key  # 不会报错
+    @abc.abstractmethod
+    def set(self, key, value):
+        # raise NotADirectoryError
+        pass
+
+
+class RedisBase(CacheBase):
+    # 重写父类的方法
+    def get(self, key):
+        pass
+
+    def set(self, key, value):
+        pass
+
+
+r = RedisBase()
+r.get("jiajia")   # 子类没有set方法时，第一次报错
+
+
+# 四 isinstance和type的区别
+
+i = 1
+s = 'jiajia'
+
+print(isinstance(i, int))
+print(isinstance(s, int))
+print(isinstance(s, str))
+
+print(type(i))
+
+if isinstance(i, int):
+# if type(i) == int:
+    print(123)
+
+
+class A:
+    pass
+
+
+class B(A):
+    pass
+
+
+b = B()
+print(isinstance(b, B))  # True
+print(isinstance(b, A))  # True 考虑类的继承关系
+
+print(type(b) is B)  # True
+print(type(b) is A)  # False 不考虑类的继承关系
+
+# 在命令行实现
+# is 和 ==的区别： == value; is 内存地址
+# x = y = [4, 5, 7]
+# z = [4, 5, 7]
+# x == y  True
+# x == z  True
+# x is y  True
+# x is z  False
+# id(x) = id(y) not equal id(z)
+
+
+# 五 类变量和对象变量
+
+class A:
+    # 类属性
+    aa = 1
+    # 实例方法
+    def __init__(self, x, y):
+        # 实例属性
+        self.x = x
+        self.y = y
+        # self.aa = 22
+
+a = A(1, 2)
+print(a.x, a.y, a.aa)  # 输出， 可以向上查找
+
+# print(A.x)   # 报错 不可以向下查找
+print(A(1, 2).x)  # 输出 1
+A.aa = 11  # 重写类属性
+a.aa = 22  # self.aa =22
+print(a.aa)  # 22
+print(A.aa)  # 11
+
+b = A(1, 2)
+print(b.aa)  # 11
+
+
+# 六 类属性和实例属性及查找顺序
+
+class A(object):
+    name = 'shelley'
+
+    def __init__(self, age):
+        self.name = "JiaJia"
+        self.age = age
+
+
+a = A(10)
+print(a.name)
+print(A.name)
+'''
+DFS: 深度优先
+BFS: 广度优先
+C3 算法
+'''
+
+'''
+class D:
+    pass
+
+
+class B(D):
+    pass
+
+
+class C(D):
+    pass
+
+
+class A(B, C):
+    pass
+
+
+print(A.__mro__)
+菱形：顺序为 A B C D
+'''
+
+'''
+class D:
+    pass
+class B(D):
+    pass
+class E:
+    pass
+class C(E):
+    pass
+class A(B, C):
+    pass
+
+print(A.__mro__)
+顺序为 A B D C E
+'''
+
+# 七 python对象的自省机制，常见的函数： dir(), type(), hasattr(), isinstance()
+
+class Person(object):
+    name = 'Jiajia'
+
+class Student(Person):
+    def __init__(self, school_name):
+        self.school_name = school_name
+
+
+user = Student('逻辑教育')
+# print(user.__dict__)  # 查看类的属性 {'school_name': '逻辑教育'}
+#
+# print(dir(user))  # 全部的属性，返回模块的属性列表。
+# print(user.name)
+
+a = [1, 2]
+# print(a.__dict__)  # 报错 'list' object has no attribute '__dict__'
+print(dir(a))
+print(list.__dict__)
+
+# 八.super函数
+
+class A:
+    def __init__(self):
+        print('A')
+
+class B(A):
+    def __init__(self):
+        print('B')
+        # python 2
+        # super(B, self).__init__()
+        super().__init__()
+
+
+# 1. 重写了B的构造函数 为什么还要去调用super
+# 数据冗余
+# b = B()
+
+class People(object):
+    def __init__(self, name, age, weight):
+        self.name = name
+        self.age = age
+        self.weight = weight
+
+    def speak(self):
+        print("s% 说: 我%d岁了"%(self.name, self.age))
+
+
+class Student(People):
+    def __init__(self, name, age, weight, grade):
+        # self.name = name
+        # self.age = age
+        # self.weight = weight
+        # super().__init__(name, age, weight)
+        People.__init__(self, name, age, weight)
+        self.grade = grade
+
+    def speak(self):
+        print("%s 说:我%d岁了 我在读%d年级"% (self.name, self.age, self.grade))
+
+
+s = Student('lg', 10, 30, 3)
+s.speak()
+
+# 2.super 执行顺序到底是什么样的
+
+
+class A:
+    def __init__(self):
+        print("A")
+
+
+class B(A):
+    def __init__(self):
+        print("B")
+        super().__init__()
+
+
+class C(A):
+    def __init__(self):
+        print("C")
+        super().__init__()
+
+
+class E:
+    pass
+
+
+class D(B, C, E):
+    def __init__(self):
+        print("D")
+        super().__init__()
+
+
+d = D()
+print(D.__mro__)  # D B C A
+# super不是之前讲的调用父类中的方法
+# 而是按照 mro 算法来调用的
+
+
+
+
+
+
