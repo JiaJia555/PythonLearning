@@ -1,0 +1,400 @@
+# 1. 派生内置不可变类型
+'''
+元组是由__new__方法生成的, init只是初始化值
+
+list('abc')
+l = list.__new__(list, 'abc')
+l -->输出为[]
+list.__init__(1, 'abc')
+l -->输出为['a', 'b', 'c']
+tuple('abc')
+t = tuple.__new__(tuple, 'abc')
+t  -->输出为('a', 'b', 'c')
+tuple.__init__(t, 'abc')
+t  -->输出为('a', 'b', 'c')
+'''
+
+
+class IntTuple(tuple):
+    def __init__(self, iterable):
+        # for i in iterable: # for 循环
+        #     if isinstance(i, int) and i > 0:
+        #         super().__init__(i)  # object.__init__() takes exactly one argument (the instance to initialize)
+        print(self)  # 输出(2, -2, 'jr', ['x', 'y'], 4)
+
+
+int_t = IntTuple([2, -2, 'jr', ['x', 'y'], 4])   #  (2,4)
+print(int_t)
+
+# self对象到底是谁创建的呢?
+# __new__方法创建的
+
+class A(object):
+    def __new__(cls, *args, **kwargs):  #创建对象
+        print("A.__new__", cls, args)
+        return object.__new__(cls)  # 返回值之后__init__才能调用
+        # return super().__new__(cls)  # 比较容易混，不介意使用
+
+    def __init__(self, *args):
+        print("A.__init__")
+
+
+# a = A(1, 2) # 等同于下面两个
+# a = A.__new__(A, 1, 2)  # 输出为A.__new__ <class '__main__.A'> (1, 2)
+# A.__init__(a, 1)  # 输出为 A.__init__
+
+class IntTuple(tuple):
+    def __new__(cls, iterable):
+        # for i in iterable: # for 循环
+        #     if isinstance(i, int) and i > 0:
+        #         super().__init__(i)
+        # 生成器，和for循环是一样的
+        # f = (i for i in iterable if isinstance(i, int) and i > 0)
+        f = [i for i in iterable if isinstance(i, int) and i > 0]   # 列表推导式
+        print(f)  # f是一个列表
+        return super().__new__(cls, f)  # 输出(2, 4)
+
+
+int_t = IntTuple([2, -2, 'jr', ['x', 'y'], 4])
+print(int_t)  # (2,4)
+
+
+# 2.如何为创建大量实例节省内存
+# 创建多个类，每个类都会产生大量数据占内存。动态属性+ __slots__
+import sys
+import tracemalloc
+
+
+class Player1(object):
+    def __init__(self, uid, name, status=0, level=1):
+        self.uid = uid  # 10.7 MiB
+        self.name = name
+        self.status = status
+        self.level = level
+
+
+class Player2(object):
+    __slots__ = ('uid', 'name', 'status', 'level')  # 关闭动态属性
+
+    def __init__(self, uid, name, status=0, level=1):
+        self.uid = uid
+        self.name = name
+        self.status = status
+        self.level = level
+
+
+p1 = Player1('0001', 'jiajia')
+p2 = Player2('0002', 'jiajia1')
+
+# print(dir(p1))
+# print(len(dir(p1)))  # 30
+# print(dir(p2))
+# print(len(dir(p2)))  # 29
+
+# __weakref__ 弱引用
+# __dict__ 显示动态绑定属性，浪费的内存
+print(set(dir(p1)) - set(dir(p2)))
+# 输出为{'__dict__', '__weakref__'}
+
+p1.x = 6
+p1.__dict__['y'] = 7
+print(p1.__dict__)
+# 输出为{'uid': '0001', 'name': 'jiajia', 'status': 0, 'level': 1, 'x': 6, 'y': 7}
+
+# __slots__不允许额外绑定属性，强制绑定会报错
+# p2.y = 7 # AttributeError:'Player2' object has no attribute 'y'
+# print(p2.name) # 依然可以取值
+
+# 也不可以通过slots外部添加属性，会报错
+# p2.__slots__ = ('x') # AttributeError: 'Player2' object attribute '__slots__' is read-only
+
+# 2.1查看内存占用到底是多少，导入模块sys, 使用getsizeof()，只能传入内置的数据类型
+# print(sys.getsizeof(p1.__dict__))
+# print(sys.getsizeof(p1.name))
+# print(sys.getsizeof(p1.uid))
+
+# 2.2
+# p1内存应该是是大于p2的，因为p2关闭了动态属性，输出p1小于p2是因为p1没有算上dict 的内存，在第11行
+tracemalloc.start()
+# p1 = [Player1(1, 2, 3) for _ in range(100000)]  # 1.1 6274 KiB  #  1.2 16.8 MiB
+p2 = [Player2(1, 2, 3) for _ in range(100000)]    # 2.1 7837 KiB  # 2.2 7837 KiB
+end = tracemalloc.take_snapshot()   # 432 B
+# top = end.statistics('lineno')  # 1.同时查看p1,p2占用内存
+top = end.statistics('filename')  # 2.分别查看p1,p2每个文件各占用内存
+
+for stat in top[:10]:
+    print(stat)
+
+
+# 3.with 语句
+try:
+    f = open('test.txt', 'w')
+    # print("code")
+    raise KeyError
+except KeyError as e:
+    print('Key Error')
+    f.close()
+except IndexError as e:
+    print("IndexError")
+    f.close()
+except Exception as e:
+    print(e)
+    f.close()
+finally:
+    # 不管有没有异常都会运行
+    print('end')
+    f.close()
+
+# with 语句自动关闭
+# with open('demo.txt', 'r') as f:
+#     f.read()
+# 3.1 类的with 语句，上下文管理器，可简化异常处理
+
+
+class Sample(object):
+    # 1.获取资源
+    def __enter__(self):
+        print('start')
+        return self
+    # 处理资源
+    def demo(self):
+        print('this is demo')
+
+    # 3.释放资源
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # <class 'AttributeError'> 异常类
+        print(exc_type, '_')
+        # 'Sample' object has no attribute 'dems' 异常值
+        print(exc_val, '_')
+        # <traceback object at 0x0000003DC40B7BC8> 追踪信息
+        print(exc_tb, '_')
+        print('end')
+
+
+with Sample() as sample:
+    sample.demo()  # this is demo
+
+# 3.2 contextlib简化上下文管理器
+import contextlib
+
+
+@contextlib.contextmanager
+def file_open(filename):
+    # xxx __enter__函数
+    print("file open")
+    yield{}  # 不可以用return
+    # __exit__函数
+    print('file close')
+
+
+with file_open("demo.txt") as f:
+    print('file operation')
+
+
+# 4.如何创建可管理的对象属性
+'''
+麻烦
+A.get_key()  #访问器
+A.set_key()  #设置器
+
+A.key()
+A.key = "jia"
+形式上 属性访问
+实际上 调用方法
+'''
+
+class A:
+    def __init__(self, age):
+        self.age = age
+
+    def get_age(self):
+        return self.age
+
+    def set_age(self, age):
+        if not isinstance(age, int):
+            raise TypeError('TyprError')
+        self.age = age
+    # property(fget = None, fset = None, fdel = None. doc = None) -->property attribute
+    # R = property(get_age, set_age, )   # 4.2
+
+    @property        # get
+    def S(self):
+        return self.age
+
+    @S.setter         #set
+    def S(self, age):
+        if not isinstance(age, int):
+            raise TypeError("Type Error")
+        self.age = age
+
+
+a = A(18)
+# print(a.age)
+# 文件读取的 str
+# a.age = '20'
+# print(type(a.age))  # <class 'str'>
+
+# 4.1 设置 get_age, set_age 和raise error避免str error
+# a.set_age('20')  # 报错
+# a.set_age(20)
+# print(a.get_age()) # 20
+
+# 4.2 设置属性 property 满足形式上 属性访问 实际上 调用方法
+# property 有两种方式，前面是第一种方法，第二种就是@property, @x.setter/deleter 可参考源码
+# a.R = 20
+# print(a.R)  #其实就是a.age
+
+# 4.3 @property, @x.setter/deleter 取值就会先调用get,赋值就先调用set
+a.S = 12
+print(a.S)
+
+
+# 5. 如何让类支持比较操作
+from functools import total_ordering
+import math
+import abc
+# 此类方法已经不介意使用了
+# from abc import ABCMeta, abstractclassmethod
+# class Shape(metaclass=ABCMeta):
+#     @abstractclassmethod
+
+@total_ordering
+class Shape(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def area(self):  # 父类可以随便写，因为会强制子类重写父类方法
+        pass
+    # 把公共方法lt,eq写在这里
+
+    def __lt__(self, other):
+        return self.area() < other.area()
+
+    def __eq__(self, other):
+        return self.area() == other.area()
+
+
+class Rect(Shape):  # object改成Shape
+    def __init__(self, w, h):
+        self.w = w
+        self.h = h
+
+    def area(self):
+        return self.w * self.h
+
+    # def __str__(self):
+    #     return '(%S, %S)' % (self.w, self.h)
+
+    # def __lt__(self, other):
+    #     return self.area() < other.area()  # other是比较的那个值
+    #
+    # def __eq__(self, other):
+    #     return self.area() == other.area()
+
+
+rect1 = Rect(1, 2)
+rect2 = Rect(3, 4)
+
+# 加__lt__方法之前会报错，类不能直接比较
+print(rect1 > rect2)   # python内部会自动调整为rect2 < rect1,因为只定义了<
+# print(rect1 >= rect2) 报错，只可判断==
+# 为了可以判断所有的符号，大于小于等于各种组合，import total_ordering, 只要完成lt和 eq
+print(rect1 <= rect2)
+
+# 有其他类,如何跨类比较。定义圆的面积，要怎么和长方形比较
+class Circle(Shape): # object 需要改成Shape
+    def __init__(self, r):
+        self.r = r
+
+    def area(self):
+        return self.r ** 2 * math.pi
+
+    # def __lt__(self, other):
+    #     return self.area() < other.area()
+    #
+    # def __eq__(self, other):
+    #     return self.area() == other.area()
+
+
+c = Circle(8)
+rect = Rect(1, 2)
+# 这个方法可以跨类比较，但是很多代码重复，引用抽象基类来简化他,最上面，把重复的代码都写在下面，注释掉单个部分的
+print(c == rect)
+
+
+# 6.如何在环状数据结构中管理内存
+# 当A被释放的时候，del方法会被执行
+# class A:
+#     def __del__(self):
+#         print('del')
+# a = 1
+# a = A()
+
+# 双向循环链表
+# 双向链表也叫双链表，是链表的一种，它的每个数据结点中都有两个指针，
+# 分别指向直接后继和直接前驱。所以，从双向链表中的任意一个结点开始，都可以很方便地访问它的前驱结点和后继结点。一般我们都构造双向循环链表。
+
+import weakref
+# 定义节点类
+class Node:
+    def __init__(self, data):
+        # 定义数据域
+        self.data = data
+        # 定义左指向域
+        self.left = None
+        # 定义右指向域
+        self.right = None
+
+    def add_right(self, node):
+        self.right = node
+        # node.left = self
+        node.left =weakref.ref(self)
+
+    def __str__(self):
+        return 'Node:<%s>' % self.data
+
+    def __del__(self):
+        print('in __del__: delete %s' % self)
+
+def create_linklist(n):
+    head = current = Node(1)
+    for i in range(2, n + 1):
+        node = Node(i)
+        current.add_right(node)
+        current = node
+    return head
+
+head = create_linklist(10)
+head = None
+
+import time
+for _ in range(1000):
+    time.sleep(1)
+    print('run...')
+input('wait...')
+
+#虽然head = None, 运行上述代码之后并未执行del方法，这时候需要引入弱引用方法
+# import 弱引用之后修改上面一行代码node.left即可
+# 弱引用是不占用引用技术的
+'''
+在命令行输入
+class A:
+    def __del__(self):
+        print('del')
+
+import weakref
+a = A
+a2 = weakref.ref(a)
+a3 = a2
+del a
+del a3
+这个时候会输出del
+'''
+
+
+
+
+
+
+
+
+
+
