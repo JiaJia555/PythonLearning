@@ -1,5 +1,5 @@
-# 1. 代码调试和性能分析
-# 1.1 代码调试
+# 4. 代码调试和性能分析
+# 4.1 代码调试
 import pdb
 a = 1
 b = 2
@@ -21,7 +21,7 @@ print(a + b + c)
 # q 退出
 # https://docs.python.org/3/library/pdb.html#module-pdb%EF%BC%89
 
-# 1.2 用 cProfile 进行性能分析
+# 4.2 用 cProfile 进行性能分析
 # profile是指对代码的每个部分进行动态的分析，比如准确计算出每个模块消耗的时间等。
 
 import cProfile
@@ -52,7 +52,7 @@ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
        31    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
         1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
        30    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
-       
+
 参数介绍：
 
 ncalls，是指相应代码 / 函数被调用的次数
@@ -70,5 +70,13 @@ def factorial(n):
         return (n*factorial(n-1))
 
 a = factorial(5)
-print(a)
+print(a) # 120
 cProfile.run('print(a)')
+
+'''
+ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.000    0.000 <string>:1(<module>)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.exec}
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+'''
