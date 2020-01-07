@@ -1,0 +1,183 @@
+# 1. IP地址: ipconfigure，包含网络号和主机号
+# IP 地址在局域网内是唯一的，地址分为两种，IP4,IP6
+# 1.1 IP 地址的分类 A B C类，
+'''
+A类：网络号7位，主机号24位
+B类：网络号14位，主机号14位
+C类：网络号21位，主机号7位
+'''
+
+# 1.2.端口
+'''
+端口分类
+1.知名端口(well known ports)
+
+80端口分配给HTTP服务
+
+21端口分配给FTP服务: 范围是从0到1023
+
+2.动态端口
+
+动态端口的范围是从1024-65535
+'''
+# 1.2.1信息传送
+'''
+发送者：content:晚上有空吗？
+        dest_ip: 192.168.1.3
+        port: 6677
+        scr_ip: 192.168.1.2
+        scr_port: 7789
+'''
+# 1.3. Socket简介
+'''
+TCP/IP协议
+TCP/IP协议是Transmission Control Protocol/Internet Protocol的简写，
+即传输控制协议/因特网互联协议，又名网络通讯协议，是Internet最基本的协议、
+Internet国际互联网络的基础，由网络层的IP协议和传输层的TCP协议组成。
+
+TCP/IP 定义了电子设备如何连入因特网，以及数据如何在它们之间传输的标准。
+协议采用了4层的层级结构，每一层都呼叫它的下一层所提供的协议来完成自己的需求。
+
+TCP/IP 四层概念模型
+应用层
+传输层
+网络层
+数据链路层
+'''
+
+# 2.创建套接字
+
+import socket
+
+# from socket import socket
+
+# 1.创建套接字
+# family = AF_INET,     协议族 AF_INET ipv4,
+# type=SOCK_STREAM      套接字类型 TCP 流式套接字; UDP: SOCK_DGRAM 数据报套接字
+# AF_INET = 2
+# AF_INET6 = 23
+s = socket.socket(family=socket.AF_INET, tyep=socket.SOCK_DGRAM)
+
+# 2.使用套接字 收/发 数据
+
+# 3.关闭套接字
+s.close()
+
+# 和文件操作流程类似
+
+# 3.udp发送数据
+import socket
+
+# 单次传送信息
+def main():
+    # 1. 创建udp套接字
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    # 发送数据
+    # def sendto(self, data: bytes, address: _Address)
+    # IP地址写localhost/127.0.1
+    # udp_socket.sendto(b"jiajia", ('10.8.18.221', 8080))
+    # 发送数据为中文, windows是gbk
+    send_data = "佳佳"
+    udp_socket.sendto(send_data.encode('gbk'), ('10.8.18.221', 8080))
+
+    udp_socket.close()
+
+
+if __name__ == '__main__':
+    main()
+
+
+# 多次传送信息
+def main():
+
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # 没有绑定端口是随机分配的
+    udp_socket.bind("", 49800)
+    while True:
+        send_data = input('请输入要发送的数据：')
+        if send_data =='exit':
+            break
+        send_data = send_data.encode('gbk')
+        udp_socket.sendto(send_data, ('10.8.18.221', 8080))
+    udp_socket.close()
+
+
+if __name__ =='__main__':
+    main()
+
+# 发送数据没有绑定端口前是随机分配的
+'''
+1. 127.0.0.1/8整个都是环回地址，用来测试本机的TCP/IP协议栈，发往这段A类地址数据包不会出网卡，网络设备不会对其做路由。
+2. localhost  就是个指向本机环回口的域名，方便记忆与输入，
+3. 本机IP=内网IP
+4. 外网IP是整个因特网的地址，唯一的，没有重复的
+内网ip是局域网内的IP地址，只能使用局域网内部资源，如果要使用因特网的资源则需要有外网IP作为出口，
+不同的内网可以重复使用IP，例如A网有192.168.0.1，B网同样可以有，不冲突。
+'''
+
+# 4.udp接收数据
+'''
+1 创建套接字
+2 绑定本地信息(IP和端口)
+3 接受数据
+4 打印数据
+5 关闭套接字
+'''
+import socket
+def main():
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # 不写ip表示本机任何ip地址
+    bind_addr = ('', 7789)  # 7789是远程主机，发送者的端口
+    udp_socket.bind(bind_addr)
+
+    while True:
+        # 1024表示本次接收的最大字节数
+        recv_data = udp_socket.recvfrom(1024)  # 字节大于1024报错
+        # print(recv_data)  # 中文不可以
+        # (b'1', ('10.8.18.221', 8080))
+        # 元组 接收到的数据 （发送方的ip和端口）
+
+        message = recv_data[0]    # 接收到的数据
+        address = recv_data[1]    # 发送方的地址
+        print('%s:%s'%(str(address), message.decode('gbk')))
+        # ('10.8.18.221', 8080):嘉佳
+
+    udp_socket.close()
+
+if __name__ == '__main__':
+    main()
+
+
+# 5 聊天器
+import socket
+
+def send_data(udp_socket):  # 传参
+    """发送数据"""
+    send_data = input('请输入要发送的数据')
+    dest_ip = input("请输入要发送的IP:")
+    dest_port = int(input("请输入要发送的端口:"))
+    udp_socket.sendto(send_data.encode('gbk'), (dest_ip, dest_port))
+
+def recv_data(udp_socket):
+    """接收数据"""
+    recv_data = udp_socket.recvfrom(1024)
+    print("%s:%s" % (recv_data[1], recv_data[0].decode('gbk')))
+
+def main():
+    #创建套接字，同时接收和发送
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # 绑定端口
+    udp_socket.bind(('', 1234))
+
+    while True:
+        # 发送
+        send_data(udp_socket)
+        # 接收
+        recv_data(udp_socket)
+
+    udp_socket.close()
+
+
+if __name__ == '__main__':
+    main()
