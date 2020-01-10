@@ -1,0 +1,217 @@
+'''
+1.TCP客户端构建流程
+
+创建socket
+链接服务器
+接收数据(最大接收2014个字节)
+关闭套接字
+'''
+import socket
+# from socket import *
+
+def main():
+    tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # tcp_client = socket(AF_INET, SOCK_STREAM)
+    server_ip = input('server ip')
+    server_port = int(input("server port"))
+
+    # 链接服务器
+    tcp_client.connect((server_ip, server_port))
+
+    # 发送数据
+    send_data = input('发送数据')
+    tcp_client.send(send_data.encode())
+    # 接受数据,阻塞
+    recedata = tcp_client.recv(1024)
+    print(recedata.decode('gbk'))
+
+    tcp_client.close()
+
+
+if __name__ == "__main__":
+    main()
+    
+  '''
+2. TCP服务端
+
+socket创建套接字
+bind绑定IP和port     固定的
+listen使套接字变为可以被动链接
+accept等待客户端的链接
+recv/send接收发送数据
+
+1 买手机
+2 插上手机卡
+3 设置手机为正常接听状态
+4 等待别人打电话
+'''
+import socket
+
+
+def main():
+    # tcp的套接字，负责等待新的客户链接
+    tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # 绑定信息
+    tcp_server.bind(('10.9.45.127', 8080))
+
+    # 主动变被动
+    tcp_server.listen(128)
+
+    print("--1--")
+    # accept() -> (socket object, address info)  # 新的套接字和客户端地址
+    new_client_socket, client_addr = tcp_server.accept()  # 新的套接字服务客户端，会阻塞到客户端连接
+    # print(client_addr)
+    print("--2--")
+    # 接收数据
+    recv_data = new_client_socket.recv(1024) # 阻塞到客户端发送数据
+    print(recv_data)
+
+    # 发送数据
+    new_client_socket.send('haha'.encode('gbk'))
+
+    # 关闭套接字
+    new_client_socket.close()
+    tcp_server.close()
+
+
+if __name__ == '__main__':
+    main()
+  
+'''
+3. TCP服务端为多个客户端服务
+'''
+
+
+import socket
+
+
+def main():
+    # tcp的套接字
+    tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # 绑定信息
+    tcp_server.bind(("192.168.0.161", 7890))
+
+    # 为多个客户端服务，可以接听多个客户端
+    while True:
+        # 主动变被动
+        tcp_server.listen(128)
+        # accept() -> (socket object, address info)
+        new_client_socket, client_addr = tcp_server.accept()
+        # print(client_addr)
+
+        # 为客户端多次服务，但是不能同时服务多个客户端，指不能同时回复客户端
+        while True:
+            # 接收数据  阻塞
+            recv_data = new_client_socket.recv(1024)
+            # print(recv_data)
+            # recv_data解阻塞条件
+            # 1.客户端发送过来数据
+            # 2.客户端断开连接
+
+            if recv_data.decode('gbk'):
+                # 发送数据
+                new_client_socket.send('haha'.encode('gbk'))
+            else:
+                break
+        # 关闭客户端，截止为当前客户端服务
+        new_client_socket.close()
+
+    tcp_server.close()
+
+
+if __name__ == '__main__':
+    main()
+
+'''
+4. TCP客户端
+
+创建套接字
+连接服务器
+
+要下载的文件名称
+发送文件下载的请求
+接收服务端发送过来的数据
+保存文件
+
+关闭套接字
+'''
+import socket
+
+
+def main():
+    # 创建套接字
+    tcp_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # server_ip = input("server ip:")
+    # server_port = int(input("server port:"))
+
+    #连接服务器
+    # tcp_client_socket.connect((server_ip, server_port))
+    tcp_client_socket.connect(('10.9.45.127', 8080))
+
+
+    file_name = input("请输入文件名称")
+
+    # 发送文件下载请求
+    tcp_client_socket.send(file_name.encode('gbk'))
+    # 接收文件
+    recv_data = tcp_client_socket.recv(1024*1024)
+
+    if recv_data():
+        # 保存文件
+        with open("接收"+ file_name, "wb") as f:
+            f.write(recv_data)
+
+
+
+if __name__ == '__main__':
+    main()
+
+
+'''
+5. TCP客户端
+
+socket创建套接字
+bind绑定IP和port
+listen使套接字变为可以被动链接
+accept等待客户端的链接
+recv/send接收发送数据
+'''
+import socket
+
+
+def send_file_client(new_client_socket):
+    # 接收口红的发送过来的数据
+    file_name = new_client_socket.recv(1024).decode()
+
+    content = b""
+
+    try:
+        with open(file_name, 'rb') as f:
+            content = f.read()
+    except:
+        print("no download file:%s" % file_name)
+
+    new_client_socket.send(content)
+
+    new_client_socket.close()
+
+
+def main():
+
+    tcp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    tcp_server_socket.bind(("", 8080))
+
+    tcp_server_socket.listen(128)
+
+    new_client_socket, client_addr = tcp_server_socket.accept()
+
+    # 给客户端返回文件内容
+    send_file_client(new_client_socket)
+
+    tcp_server_socket.close()
+
+if __name__ == '__main__':
+    main()
